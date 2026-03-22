@@ -74,7 +74,7 @@ class MQTTComponent:
             temp = payload.get('temperature')
             self.httpserver.scooters[sid].temperatureDenied = True
             self.httpserver.scooters[sid].temperature = temp
-            print(f'[SERVER] Scooter #{sid} rental denied - temperature {temp}°C is below 25°C')
+            print(f'[SERVER] Scooter #{sid} rental denied - temperature {temp}°C is below 40°C')
         else:
             print(f'[SERVER] WARNING: Unknown command received: {command}')
 

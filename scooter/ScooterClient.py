@@ -58,7 +58,7 @@ class ScooterClient:
                 print(f"[SCOOTER {self.client.id}] Received command: UNLOCK (rent)")
                 allowed, temp = check_temperature()
                 if not allowed:
-                    print(f"[SCOOTER {self.client.id}] RENTAL DENIED - temperature {temp:.1f}°C is below 25°C")
+                    print(f"[SCOOTER {self.client.id}] RENTAL DENIED - temperature {temp:.1f}°C is below 40°C")
                     payload = json.dumps({"id": str(self.client.id), "command": "rental_denied_temperature", "temperature": round(temp, 1)})
                     self.client.publish(MQTT_TOPIC_OUTPUT, payload)
                 else:

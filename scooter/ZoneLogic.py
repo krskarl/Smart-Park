@@ -52,7 +52,7 @@ def try_to_stop():
 
     print(f"[MAGNET] Sensor reading: x={x:.1f}, y={y:.1f}, z={z:.1f}")
 
-    if abs(mag['x']) > 100 or abs(mag['y']) > 100:
+    if abs(mag['x']) > 60 or abs(mag['y']) > 60:
         print(f"[MAGNET] Strong magnetic field detected - valid parking zone")
         return True
 
@@ -60,7 +60,7 @@ def try_to_stop():
     return False
 
 
-TEMPERATURE_THRESHOLD = 25.0
+TEMPERATURE_THRESHOLD = 40.0
 # Simulation temperature (default above threshold so rental is allowed)
 _sim_temperature = 30.0
 
