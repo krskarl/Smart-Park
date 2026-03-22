@@ -59,6 +59,9 @@ class ScooterClient:
                 allowed, temp = check_temperature()
                 if not allowed:
                     print(f"[SCOOTER {self.client.id}] RENTAL DENIED - temperature {temp:.1f}°C is below 40°C")
+                    # Reset claim timer so it doesn't expire while user retries
+                    self.scooter.stm.stop_timer("t_claimed")
+                    self.scooter.stm.start_timer("t_claimed", 10000)
                     payload = json.dumps({"id": str(self.client.id), "command": "rental_denied_temperature", "temperature": round(temp, 1)})
                     self.client.publish(MQTT_TOPIC_OUTPUT, payload)
                 else:
