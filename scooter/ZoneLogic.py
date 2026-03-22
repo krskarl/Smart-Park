@@ -58,3 +58,18 @@ def try_to_stop():
 
     print(f"[MAGNET] No significant magnetic field - not a parking zone")
     return False
+
+
+TEMPERATURE_THRESHOLD = 25.0
+# Simulation temperature (default above threshold so rental is allowed)
+_sim_temperature = 30.0
+
+def check_temperature():
+    """Check if temperature allows rental. Returns (allowed, temperature)."""
+    if SIMULATION_MODE:
+        print(f"[TEMP] Simulation mode - temperature: {_sim_temperature:.1f}°C")
+        return _sim_temperature >= TEMPERATURE_THRESHOLD, _sim_temperature
+
+    temp = sense.get_temperature()
+    print(f"[TEMP] Sensor reading: {temp:.1f}°C (threshold: {TEMPERATURE_THRESHOLD}°C)")
+    return temp >= TEMPERATURE_THRESHOLD, temp

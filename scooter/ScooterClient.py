@@ -3,7 +3,8 @@ import paho.mqtt.client as mqtt
 from threading import Thread
 import json
 from stmpy import Driver
-from ScooterLogic import ScooterLogic
+from ScooterLogic import ScooterLogic, MQTT_TOPIC_OUTPUT
+from ZoneLogic import check_temperature
 import logging
 
 class ScooterClient:
@@ -55,7 +56,14 @@ class ScooterClient:
                 self.stm_driver.send("claim", "scooterMachine")
             case "unlock":
                 print(f"[SCOOTER {self.client.id}] Received command: UNLOCK (rent)")
-                self.stm_driver.send("unlock", "scooterMachine")
+                allowed, temp = check_temperature()
+                if not allowed:
+                    print(f"[SCOOTER {self.client.id}] RENTAL DENIED - temperature {temp:.1f}°C is below 25°C")
+                    payload = json.dumps({"id": str(self.client.id), "command": "rental_denied_temperature", "temperature": round(temp, 1)})
+                    self.client.publish(MQTT_TOPIC_OUTPUT, payload)
+                else:
+                    print(f"[SCOOTER {self.client.id}] Temperature OK ({temp:.1f}°C) - unlocking")
+                    self.stm_driver.send("unlock", "scooterMachine")
             case "stop_renting":
                 print(f"[SCOOTER {self.client.id}] Received command: STOP RENTING (attempting to park)")
                 self.stm_driver.send("stop_renting", "scooterMachine")

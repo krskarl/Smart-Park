@@ -50,7 +50,7 @@ python serverapp.py 127.0.0.1 8080
 
 ```bash
 cd scooter
-python3.12 -m venv venv
+python3.12 -m venv --system-site-packages venv
 source venv/bin/activate
 pip install -r requirements.txt
 python ScooterClient.py --id 1234

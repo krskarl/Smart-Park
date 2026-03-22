@@ -1,7 +1,7 @@
 import stmpy
 import logging
 from Display import display_text, display_status, display_battery
-from ZoneLogic import try_to_stop;
+from ZoneLogic import try_to_stop, check_temperature;
 import json
 import time
 import threading

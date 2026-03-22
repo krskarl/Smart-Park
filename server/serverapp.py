@@ -23,6 +23,8 @@ class Scooter():
     battery = 100
     parked = True
     invalidParking = False
+    temperatureDenied = False
+    temperature = None
     owner = ""
 
     def __init__(self, id):
@@ -68,6 +70,11 @@ class MQTTComponent:
         elif command == 'unable_to_lock':
             self.httpserver.scooters[sid].invalidParking = True
             print(f'[SERVER] Scooter #{sid} parking rejected - not in valid zone')
+        elif command == 'rental_denied_temperature':
+            temp = payload.get('temperature')
+            self.httpserver.scooters[sid].temperatureDenied = True
+            self.httpserver.scooters[sid].temperature = temp
+            print(f'[SERVER] Scooter #{sid} rental denied - temperature {temp}°C is below 25°C')
         else:
             print(f'[SERVER] WARNING: Unknown command received: {command}')
 
@@ -127,6 +134,7 @@ class myHandler(BaseHTTPRequestHandler):
                 payload['errormessage'] = 'you do not own the claim to this scooter'
                 print(f'[SERVER] Rent request for scooter #{sid} DENIED - user does not own claim')
             else:
+                self.scooters[sid].temperatureDenied = False
                 self.mqtt_client.publish(mqttUnlockChannel+'/1234/command', json.dumps({"id":sid,"command":"unlock"}))
                 sendTime = time.time()
                 payload['status'] = 'failure'
@@ -134,8 +142,15 @@ class myHandler(BaseHTTPRequestHandler):
                     if self.scooters[sid].rented:
                         payload['status'] = 'success'
                         break
+                    if self.scooters[sid].temperatureDenied:
+                        break
                 if payload['status'] == 'success':
                     print(f'[SERVER] Scooter #{sid} rented successfully')
+                elif self.scooters[sid].temperatureDenied:
+                    payload['status'] = 'failure'
+                    payload['errormessage'] = 'temperature_too_low'
+                    payload['temperature'] = self.scooters[sid].temperature
+                    print(f'[SERVER] Rent request for scooter #{sid} DENIED - temperature too low ({self.scooters[sid].temperature}°C)')
                 else:
                     print(f'[SERVER] Rent request for scooter #{sid} FAILED - scooter did not respond')
 

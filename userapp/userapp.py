@@ -156,9 +156,19 @@ class UserApp:
 
             try:
                 command = Command('rent',id)
-                self.CustomGETrequest(command)
+                response = self.CustomGETrequest(command)
             except:
                 print('request failed')
+                return
+
+            if response and 'errormessage' in response:
+                if response['errormessage'] == 'temperature_too_low':
+                    temp = response.get('temperature', '?')
+                    self.app.infoBox('Error', 'Cannot rent: temperature is {}°C (minimum 25°C required)'.format(temp), parent=None)
+                    return
+                else:
+                    self.app.infoBox('Error', response['errormessage'], parent=None)
+                    return
 
             print('Started a rental of {}'.format(id))
             self.scooterList[index].rented = True
