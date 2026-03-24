@@ -60,7 +60,7 @@ def try_to_stop():
     return False
 
 
-TEMPERATURE_THRESHOLD = 40.0
+TEMPERATURE_THRESHOLD = 30.0
 # Simulation temperature (default above threshold so rental is allowed)
 _sim_temperature = 30.0
 
