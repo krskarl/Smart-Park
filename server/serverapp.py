@@ -135,7 +135,7 @@ class myHandler(BaseHTTPRequestHandler):
                 print(f'[SERVER] Rent request for scooter #{sid} DENIED - user does not own claim')
             else:
                 self.scooters[sid].temperatureDenied = False
-                self.mqtt_client.publish(mqttUnlockChannel+'/1234/command', json.dumps({"id":sid,"command":"unlock"}))
+                self.mqtt_client.publish(mqttUnlockChannel+'/'+sid+'/command', json.dumps({"id":sid,"command":"unlock"}))
                 sendTime = time.time()
                 payload['status'] = 'failure'
                 while time.time() < sendTime + scooterUnlockTimeout:
@@ -162,7 +162,7 @@ class myHandler(BaseHTTPRequestHandler):
                 print(f'[SERVER] Stop rental for scooter #{sid} DENIED - user does not own rental')
             else:
                 print(f'[SERVER] User requesting to park scooter #{sid} - waiting for scooter response...')
-                self.mqtt_client.publish(mqttUnlockChannel+'/1234/command', json.dumps({"id":sid,"command":"stop_renting"}))
+                self.mqtt_client.publish(mqttUnlockChannel+'/'+sid+'/command', json.dumps({"id":sid,"command":"stop_renting"}))
                 sendTime = time.time()
                 status = 'failure'
                 while time.time() < sendTime + scooterUnlockTimeout:
@@ -190,7 +190,7 @@ class myHandler(BaseHTTPRequestHandler):
                 payload['errormessage'] = 'already_claimed'
                 print(f'[SERVER] Claim request for scooter #{sid} DENIED - already claimed/rented')
             else:
-                self.mqtt_client.publish(mqttUnlockChannel+'/1234/command', json.dumps({"id":sid,"command":"claim"}))
+                self.mqtt_client.publish(mqttUnlockChannel+'/'+sid+'/command', json.dumps({"id":sid,"command":"claim"}))
                 sendTime = time.time()
                 payload['status'] = 'failure'
                 while time.time() < sendTime + scooterUnlockTimeout:
@@ -210,7 +210,7 @@ class myHandler(BaseHTTPRequestHandler):
                 payload['errormessage'] = 'you do not own the claim to this scooter'
                 print(f'[SERVER] Unclaim request for scooter #{sid} DENIED - user does not own claim')
             else:
-                self.mqtt_client.publish(mqttUnlockChannel+'/1234/command', json.dumps({"id":sid,"command":"unclaim"}))
+                self.mqtt_client.publish(mqttUnlockChannel+'/'+sid+'/command', json.dumps({"id":sid,"command":"unclaim"}))
                 sendTime = time.time()
                 status = 'failure'
                 while time.time() < sendTime + scooterUnlockTimeout:

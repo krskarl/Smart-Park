@@ -5,6 +5,7 @@ from appJar import gui
 import logging
 import requests # type: ignore
 import asyncio
+import threading
 import sys
 import argparse
 
@@ -83,17 +84,28 @@ class UserApp:
             print('error')
 
     def color_button(self, name, color):
-        """Color a button on macOS using highlightbackground and make it bigger."""
+        """Color a button on macOS using highlightbackground."""
         w = self.app.getButtonWidget(name)
-        w.config(highlightbackground=color, font=('Helvetica', 14), pady=10, padx=20)
+        w.config(highlightbackground=color, font=('Helvetica', 14), pady=6, padx=12)
+
+    def small_button(self, name, color):
+        """Smaller button for refresh etc."""
+        w = self.app.getButtonWidget(name)
+        w.config(highlightbackground=color, font=('Helvetica', 13), pady=2, padx=4)
 
     def create_gui(self):
-        self.app = gui('Smart Park - E-Scooter Rental', '850x600', handleArgs=False)
-        self.app.setFont(size=14, family='Helvetica')
+        self.app = gui('Smart Park - E-Scooter Rental', '900x500', handleArgs=False)
+        self.app.setFont(size=13, family='Helvetica')
         self.app.setBg('#D6E4F0')
         self.app.setFg('#1a1a1a')
-        self.app.setPadding([10, 5])
-        self.app.setInPadding([5, 5])
+        self.app.setPadding([5, 3])
+        self.app.setInPadding([3, 3])
+        # Fix row/column weights so frames don't overlap
+        self.app.getContainer().grid_rowconfigure(1, weight=1, uniform='row')
+        self.app.getContainer().grid_rowconfigure(2, weight=1, uniform='row')
+        self.app.getContainer().grid_columnconfigure(0, weight=1, uniform='equal')
+        self.app.getContainer().grid_columnconfigure(1, weight=1, uniform='equal')
+        self.app.getContainer().grid_columnconfigure(2, weight=1, uniform='equal')
 
         # Title
         self.app.addLabel('title', '  Smart Park - E-Scooter Rental  ', 0, 0, 3)
@@ -106,9 +118,10 @@ class UserApp:
             scooter_id = int(label.split(' ')[1])
             return scooter_id
 
-        ### AVAILABLE SCOOTERS
-        self.app.startLabelFrame('  Available Scooters  ', 1, 0, 1, 1)
-        self.app.setSticky('new')
+        ### LEFT COLUMN: Available Scooters (row 1-2, col 0)
+        self.app.startLabelFrame('  Available Scooters  ', 1, 0, 1, 2)
+        self.app.setLabelFrameFg('  Available Scooters  ', '#000000')
+        self.app.setSticky('news')
         def on_button_pressed_start():
             self.app.openLabelFrame('  Available Scooters  ')
             self.app.emptyCurrentContainer()
@@ -119,7 +132,7 @@ class UserApp:
 
             self.app.openLabelFrame('  Available Scooters  ')
             self.app.addNamedButton('Refresh', 'refresh_btn', on_button_pressed_start)
-            self.color_button('refresh_btn', '#4A90D9')
+            self.small_button('refresh_btn', '#4A90D9')
 
             command = Command('list')
             response = self.CustomGETrequest(command)
@@ -145,12 +158,13 @@ class UserApp:
                 self.app.infoBox('No Scooters', 'No scooters available nearby.', parent=None)
 
         self.app.addNamedButton('Refresh', 'refresh_btn', on_button_pressed_start)
-        self.color_button('refresh_btn', '#4A90D9')
+        self.small_button('refresh_btn', '#4A90D9')
         self.app.stopLabelFrame()
 
-        ### CLAIM
+        ### MIDDLE TOP: Claim Scooter (row 1, col 1)
         self.app.startLabelFrame('  Claim Scooter  ', 1, 1, 1, 1)
-        self.app.setSticky('new')
+        self.app.setLabelFrameFg('  Claim Scooter  ', '#000000')
+        self.app.setSticky('news')
         def on_button_pressed_claim(title):
             id = extract_scooter_id(title)
             index = [i for i,x in enumerate(self.scooterList) if x.id == str(id)][0]
@@ -165,20 +179,59 @@ class UserApp:
                 print('claimed scooter {}'.format(id))
 
                 self.app.openLabelFrame('  Rent Scooter  ')
-                btn_name = 'Scooter {} - Rent'.format(id)
-                self.app.addNamedButton('Rent #{}'.format(id), btn_name, on_button_pressed_rent)
-                self.color_button(btn_name, '#FFA726')
+                rent_btn = 'Scooter {} - Rent'.format(id)
+                self.app.addNamedButton('Rent #{}'.format(id), rent_btn, on_button_pressed_rent)
+                self.color_button(rent_btn, '#FFA726')
 
-                self.app.openLabelFrame('  Active Claims  ')
-                btn_name = 'Scooter {} - Unclaim'.format(id)
-                self.app.addNamedButton('Unclaim #{}'.format(id), btn_name, on_button_pressed_unclaim)
-                self.color_button(btn_name, '#BDBDBD')
+                self.app.openLabelFrame('  Unclaim Scooter  ')
+                unclaim_btn = 'Scooter {} - Unclaim'.format(id)
+                self.app.addNamedButton('Unclaim #{}'.format(id), unclaim_btn, on_button_pressed_unclaim)
+                self.color_button(unclaim_btn, '#BDBDBD')
+
+                # Start timer to remove rent/unclaim buttons when claim expires (10s)
+                def expire_claim(scooter_id, scooter_index, r_btn, u_btn):
+                    def _expire():
+                        if self.scooterList[scooter_index].claimed and not self.scooterList[scooter_index].rented:
+                            self.scooterList[scooter_index].claimed = False
+                            print('Claim expired for scooter {}'.format(scooter_id))
+                            try:
+                                self.app.removeButton(r_btn)
+                            except:
+                                pass
+                            try:
+                                self.app.removeButton(u_btn)
+                            except:
+                                pass
+                            self.app.infoBox('Claim Expired', 'Your claim on scooter #{} has expired.'.format(scooter_id), parent=None)
+                    self.app.after(10000, _expire)
+                expire_claim(id, index, rent_btn, unclaim_btn)
 
         self.app.stopLabelFrame()
 
-        ### RENT
+        ### MIDDLE BOTTOM: Unclaim Scooter (row 2, col 1)
+        self.app.startLabelFrame('  Unclaim Scooter  ', 2, 1, 1, 1)
+        self.app.setLabelFrameFg('  Unclaim Scooter  ', '#000000')
+        self.app.setSticky('news')
+        def on_button_pressed_unclaim(title):
+            id = extract_scooter_id(title)
+            index = [i for i,x in enumerate(self.scooterList) if x.id == str(id)][0]
+            print('Stopped a claim of {}'.format(id))
+            self.scooterList[index].claimed = False
+            try:
+                self.app.removeButton('Scooter {} - Unclaim'.format(id))
+            except:
+                pass
+            try:
+                self.app.removeButton('Scooter {} - Rent'.format(id))
+            except:
+                pass
+
+        self.app.stopLabelFrame()
+
+        ### RIGHT TOP: Rent Scooter (row 1, col 2)
         self.app.startLabelFrame('  Rent Scooter  ', 1, 2, 1, 1)
-        self.app.setSticky('new')
+        self.app.setLabelFrameFg('  Rent Scooter  ', '#000000')
+        self.app.setSticky('news')
         def on_button_pressed_rent(title):
             id = extract_scooter_id(title)
             index = [i for i,x in enumerate(self.scooterList) if x.id == str(id)][0]
@@ -203,16 +256,27 @@ class UserApp:
             print('Started a rental of {}'.format(id))
             self.scooterList[index].rented = True
 
-            self.app.openLabelFrame('  Active Rentals  ')
+            # Remove rent and unclaim buttons
+            try:
+                self.app.removeButton('Scooter {} - Rent'.format(id))
+            except:
+                pass
+            try:
+                self.app.removeButton('Scooter {} - Unclaim'.format(id))
+            except:
+                pass
+
+            self.app.openLabelFrame('  Park Scooter  ')
             btn_name = 'Scooter {} - Stop Rental'.format(id)
-            self.app.addNamedButton('Return #{}'.format(id), btn_name, on_button_pressed_stop)
+            self.app.addNamedButton('Park #{}'.format(id), btn_name, on_button_pressed_stop)
             self.color_button(btn_name, '#EF5350')
 
         self.app.stopLabelFrame()
 
-        ### ACTIVE RENTALS
-        self.app.startLabelFrame('  Active Rentals  ', 2, 0, 1, 2)
-        self.app.setSticky('new')
+        ### RIGHT BOTTOM: Park Scooter (row 2, col 2)
+        self.app.startLabelFrame('  Park Scooter  ', 2, 2, 1, 1)
+        self.app.setLabelFrameFg('  Park Scooter  ', '#000000')
+        self.app.setSticky('news')
         def on_button_pressed_stop(title):
             id = extract_scooter_id(title)
             index = [i for i,x in enumerate(self.scooterList) if x.id == str(id)][0]
@@ -225,20 +289,10 @@ class UserApp:
             else:
                 self.scooterList[index].rented = False
                 print('Stopped a rental of {}'.format(id))
-                self.app.removeButton('Scooter {} - Stop Rental'.format(id))
-                self.app.removeButton('Scooter {} - Unclaim'.format(id))
-
-        self.app.stopLabelFrame()
-
-        ### ACTIVE CLAIMS
-        self.app.startLabelFrame('  Active Claims  ', 2, 2, 1, 1)
-        self.app.setSticky('new')
-        def on_button_pressed_unclaim(title):
-            id = extract_scooter_id(title)
-            index = [i for i,x in enumerate(self.scooterList) if x.id == str(id)][0]
-            print('Stopped a claim of {}'.format(id))
-            self.scooterList[index].claimed = False
-            self.app.removeButton('Scooter {} - Unclaim'.format(id))
+                try:
+                    self.app.removeButton('Scooter {} - Stop Rental'.format(id))
+                except:
+                    pass
 
         self.app.stopLabelFrame()
 
